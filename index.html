@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <title>Elm Pomodoro List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+  </head>
+  <body>
+    <div id="main"></div>
+    <audio id="alarm" preload="auto" autobuffer>
+      <source type="audio/mpeg" src="alarm.mp3">
+      <source type="audio/ogg" src="alarm.ogg">
+    </audio>
+    <script src="elm.js"></script>
+    <script>
+      // load : String -> Maybe a
+      const load = (name, defaultValue) => {
+        try {
+          return JSON.parse(localStorage.getItem(name)) || defaultValue
+        } catch (err) {
+          return defaultValue
+        }
+      }
+
+      // save : String -> a -> null
+      const save = (name, value) => {
+        try {
+          localStorage.setItem(name, JSON.stringify(value))
+        } catch (err) {}
+        return null
+      }
+
+      // clockTime : Int -> String
+      const clockTime = (totalSeconds) => {
+        const seconds = ('0' + totalSeconds % 60).slice(-2)
+        const minutes = String(Math.floor(totalSeconds / 60) % 60)
+        return minutes + ':' + seconds
+      }
+
+      const updateTab = (time) => {
+        document.querySelector('title').textContent = clockTime(time)
+      }
+      const saveModel = save.bind(null, 'model')
+
+      const makeSound = () => {
+        document.querySelector('#alarm').play()
+      }
+
+      const model = load('model', {
+        time: 25*60,
+        running: false,
+        sprinting: true,
+        text: '',
+        todos: [],
+      })
+
+      const node = document.querySelector('#main')
+      const app = Elm.Main.embed(node, model)
+      app.ports.save.subscribe(model => {
+        saveModel(model)
+        updateTab(model.time)
+      })
+      app.ports.sound.subscribe(makeSound)
+    </script>
+  </body>
+</html>
