@@ -14,54 +14,22 @@
     </audio>
     <script src="elm.js"></script>
     <script>
-      // load : String -> Maybe a
-      const load = (name, defaultValue) => {
-        try {
-          return JSON.parse(localStorage.getItem(name)) || defaultValue
-        } catch (err) {
-          return defaultValue
-        }
-      }
-
-      // save : String -> a -> null
-      const save = (name, value) => {
-        try {
-          localStorage.setItem(name, JSON.stringify(value))
-        } catch (err) {}
-        return null
-      }
-
-      // clockTime : Int -> String
-      const clockTime = (totalSeconds) => {
-        const seconds = ('0' + totalSeconds % 60).slice(-2)
-        const minutes = String(Math.floor(totalSeconds / 60) % 60)
-        return minutes + ':' + seconds
-      }
-
-      const updateTab = (time) => {
-        document.querySelector('title').textContent = clockTime(time)
-      }
-      const saveModel = save.bind(null, 'model')
-
-      const makeSound = () => {
-        document.querySelector('#alarm').play()
-      }
-
-      const model = load('model', {
-        time: 25*60,
-        running: false,
-        sprinting: true,
-        text: '',
-        todos: [],
-      })
-
-      const node = document.querySelector('#main')
-      const app = Elm.Main.embed(node, model)
-      app.ports.save.subscribe(model => {
-        saveModel(model)
-        updateTab(model.time)
-      })
-      app.ports.sound.subscribe(makeSound)
+      var app = Elm.Main.embed(
+        document.querySelector("#main"),
+        { todos: JSON.parse(localStorage.todos || "[]") }
+      );
+      
+      app.ports.saveTodos.subscribe(function(todos) {
+        localStorage.todos = JSON.stringify(todos);
+      });
+      
+      app.ports.updateTitle.subscribe(function(title) {
+        document.querySelector("title").textContent = title;
+      });
+      
+      app.ports.makeSound.subscribe(function() {
+        document.querySelector("#alarm").play();
+      });
     </script>
   </body>
 </html>

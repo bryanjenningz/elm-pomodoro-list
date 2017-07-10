@@ -6,28 +6,37 @@ import Html.Events exposing (onClick, onSubmit, onInput)
 import Time exposing (Time, second)
 
 
-init : Model -> (Model, Cmd Msg)
-init model =
-    ( model, Cmd.none )
+type Mode
+    = Working
+    | Resting
 
 
 type alias Model =
-    { time : Int -- Time in seconds
-    , running : Bool -- Is the clock running?
-    , sprinting : Bool -- Is it sprinting mode or resting mode? (25 minutes or 5 minutes?)
-    , text : String
+    { secondsLeft : Int
+    , running : Bool
+    , mode : Mode
+    , inputBox : String
     , todos : List String
     }
+
+
+type alias Flag =
+    { todos : List String }
 
 
 type Msg
     = Tick Time
     | PlayPause
-    | ToggleSprinting
+    | ToggleMode
     | ResetTime
-    | ChangeText String
+    | InputBox String
     | AddTodo String
     | RemoveTodo Int
+
+
+init : Flag -> ( Model, Cmd Msg )
+init flag =
+    ( Model (modeToSeconds Working) False Working "" flag.todos, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -40,19 +49,19 @@ view model =
 
 viewTodos : Model -> Html Msg
 viewTodos model =
-    div [ class "col-sm-4 col-sm-offset-4"]
+    div [ class "col-sm-4 col-sm-offset-4" ]
         [ form
-            [ onSubmit (AddTodo model.text) ]
+            [ onSubmit (AddTodo model.inputBox) ]
             [ input
                 [ class "form-control"
-                , onInput ChangeText
-                , value model.text
+                , onInput InputBox
+                , value model.inputBox
                 ]
                 []
             ]
         , div
             [ class "list-group text-center" ]
-            ( List.indexedMap viewTodo model.todos )
+            (List.indexedMap viewTodo model.todos)
         ]
 
 
@@ -62,7 +71,7 @@ viewTodo index todo =
         [ text todo
         , div
             [ class "pull-right"
-            , style [ ("cursor", "pointer") ]
+            , style [ ( "cursor", "pointer" ) ]
             ]
             [ span
                 [ onClick (RemoveTodo index) ]
@@ -75,7 +84,7 @@ pomodoroTimer : Model -> Html Msg
 pomodoroTimer model =
     div [ class "text-center" ]
         [ h2 []
-            [ text (clockTime model.time) ]
+            [ text (clockTime model.secondsLeft) ]
         , buttonGroup
             [ resetButton
             , playPauseButton model.running
@@ -98,9 +107,12 @@ resetButton =
 
 playPauseButton : Bool -> Html Msg
 playPauseButton playing =
-    let 
+    let
         glyphiconText =
-            if playing then "pause" else "play"
+            if playing then
+                "pause"
+            else
+                "play"
     in
         viewButton
             [ onClick PlayPause ]
@@ -110,7 +122,7 @@ playPauseButton playing =
 nextButton : Html Msg
 nextButton =
     viewButton
-        [ onClick ToggleSprinting ]
+        [ onClick ToggleMode ]
         [ viewGlyphicon "step-forward" ]
 
 
@@ -122,7 +134,7 @@ viewGlyphicon glyphiconText =
 viewButton : List (Attribute Msg) -> List (Html Msg) -> Html Msg
 viewButton attributes children =
     button
-        ( [ class "btn btn-default" ]
+        ([ class "btn btn-default" ]
             ++ attributes
         )
         children
@@ -132,101 +144,106 @@ clockTime : Int -> String
 clockTime totalSeconds =
     let
         seconds =
-            String.right 2 <| "0" ++ (toString <| rem totalSeconds 60)
+            String.padLeft 2 '0' (toString <| rem totalSeconds 60)
+
         minutes =
             toString <| rem (totalSeconds // 60) 60
     in
         minutes ++ ":" ++ seconds
 
 
-update : Msg -> Model -> (Model, Cmd Msg)
+toggleMode : Mode -> Mode
+toggleMode mode =
+    case mode of
+        Working ->
+            Resting
+
+        Resting ->
+            Working
+
+
+modeToSeconds : Mode -> Int
+modeToSeconds mode =
+    case mode of
+        Working ->
+            25 * 60
+
+        Resting ->
+            5 * 60
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick time ->
-            let
-                timeChange =
-                    if model.running then 1 else 0
-                decrementedTime =
-                    model.time - timeChange
-                ( time, shouldMakeSound ) =
-                    if decrementedTime < 0 then
-                        ( if model.sprinting then 5*60 else 25*60, True )
-                    else
-                        ( decrementedTime, False )
-            in
-                saveModel
-                    ( { model | time = time }
-                    , if shouldMakeSound then sound 1 else Cmd.none
-                    )
+            if model.secondsLeft - 1 < 0 then
+                ( { model
+                    | secondsLeft = model.mode |> toggleMode |> modeToSeconds
+                  }
+                , makeSound ()
+                )
+            else
+                ( { model | secondsLeft = model.secondsLeft - 1 }
+                , updateTitle (clockTime (model.secondsLeft - 1))
+                )
 
         PlayPause ->
-            saveModel ( { model | running = not model.running }, Cmd.none )
+            ( { model | running = not model.running }, Cmd.none )
 
-        ToggleSprinting ->
+        ToggleMode ->
             let
-                sprinting =
-                    not model.sprinting
+                mode =
+                    toggleMode model.mode
             in
-                saveModel
-                    ( { model
-                      | sprinting = sprinting
-                      , time = if sprinting then (25*60) else (5*60)
-                      }
-                    , Cmd.none
-                    )
-
-        ResetTime ->
-            let
-                time =
-                    if model.sprinting then (25*60) else (5*60)
-            in
-                saveModel ( { model | time = time }, Cmd.none )
-
-        ChangeText text ->
-            saveModel ( { model | text = text }, Cmd.none )
-
-        AddTodo text ->
-            saveModel
-                ( { model
-                  | todos = model.todos ++ [ text ]
-                  , text = ""
-                  }
+                ( { model | mode = mode, secondsLeft = modeToSeconds mode }
                 , Cmd.none
                 )
+
+        ResetTime ->
+            ( { model | secondsLeft = modeToSeconds model.mode }, Cmd.none )
+
+        InputBox inputBox ->
+            ( { model | inputBox = inputBox }, Cmd.none )
+
+        AddTodo inputBox ->
+            let
+                todos =
+                    model.todos ++ [ inputBox ]
+            in
+                ( { model | todos = todos, inputBox = "" }, saveTodos todos )
 
         RemoveTodo index ->
             let
                 frontTodos =
                     List.take index model.todos
+
                 backTodos =
                     List.drop (index + 1) model.todos
+
                 todos =
                     frontTodos ++ backTodos
             in
-                saveModel ( { model | todos = todos }, Cmd.none )
+                ( { model | todos = todos }, saveTodos todos )
 
 
-saveModel : (Model, Cmd Msg) -> (Model, Cmd Msg)
-saveModel tuple =
-    let
-        model =
-            Tuple.first tuple
-        cmd =
-            Tuple.second tuple
-    in
-        ( model, Cmd.batch [ cmd, save model ] )
+port saveTodos : List String -> Cmd msg
 
 
-port save : Model -> Cmd msg
-port sound : Int -> Cmd msg
+port updateTitle : String -> Cmd msg
+
+
+port makeSound : () -> Cmd msg
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every second Tick
+    if model.running then
+        Time.every second Tick
+    else
+        Sub.none
 
 
-main : Program Model Model Msg
+main : Program Flag Model Msg
 main =
     programWithFlags
         { init = init
