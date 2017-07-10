@@ -15,7 +15,7 @@ type Mode
 
 type alias Model =
     { secondsLeft : Int
-    , running : Bool
+    , clockRunning : Bool
     , mode : Mode
     , inputBox : String
     , todos : List String
@@ -109,7 +109,7 @@ pomodoroTimer model =
             [ text (clockTime model.secondsLeft) ]
         , buttonGroup
             [ resetButton
-            , playPauseButton model.running
+            , playPauseButton model.clockRunning
             , nextButton
             ]
         ]
@@ -190,7 +190,8 @@ update msg model =
         Tick time ->
             if model.secondsLeft - 1 < 0 then
                 ( { model
-                    | secondsLeft = model.mode |> toggleMode |> modeToSeconds
+                    | secondsLeft = toggleMode model.mode |> modeToSeconds
+                    , mode = toggleMode model.mode
                   }
                 , makeSound ()
                 )
@@ -200,7 +201,7 @@ update msg model =
                 )
 
         PlayPause ->
-            ( { model | running = not model.running }, Cmd.none )
+            ( { model | clockRunning = not model.clockRunning }, Cmd.none )
 
         ToggleMode ->
             let
@@ -271,7 +272,7 @@ port makeSound : () -> Cmd msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if model.running then
+    if model.clockRunning then
         Time.every second Tick
     else
         Sub.none
