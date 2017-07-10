@@ -121,9 +121,7 @@ buttonGroup buttons =
 
 resetButton : Html Msg
 resetButton =
-    viewButton
-        [ onClick ResetTime ]
-        [ viewGlyphicon "step-backward" ]
+    viewButton [ onClick ResetTime ] [ viewGlyphicon "step-backward" ]
 
 
 playPauseButton : Bool -> Html Msg
@@ -135,16 +133,12 @@ playPauseButton playing =
             else
                 "play"
     in
-        viewButton
-            [ onClick PlayPause ]
-            [ viewGlyphicon glyphiconText ]
+        viewButton [ onClick PlayPause ] [ viewGlyphicon glyphiconText ]
 
 
 nextButton : Html Msg
 nextButton =
-    viewButton
-        [ onClick ToggleMode ]
-        [ viewGlyphicon "step-forward" ]
+    viewButton [ onClick ToggleMode ] [ viewGlyphicon "step-forward" ]
 
 
 viewGlyphicon : String -> Html Msg
@@ -154,11 +148,7 @@ viewGlyphicon glyphiconText =
 
 viewButton : List (Attribute Msg) -> List (Html Msg) -> Html Msg
 viewButton attributes children =
-    button
-        ([ class "btn btn-default" ]
-            ++ attributes
-        )
-        children
+    button ([ class "btn btn-default" ] ++ attributes) children
 
 
 clockTime : Int -> String
