@@ -3,7 +3,7 @@
 ## How to run
 
 ### Open in Ellie
-1. Go to https://ellie-app.com/3J7wqrHkX67a1/0
+1. Go to https://ellie-app.com/3J7wqrHkX67a1/1
 2. Click the compile button
 
 ### Build and run locally
