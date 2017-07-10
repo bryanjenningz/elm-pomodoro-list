@@ -1,9 +1,11 @@
 port module Main exposing (..)
 
 import Html exposing (Html, Attribute, programWithFlags, div, text, h2, button, i, input, form, span)
-import Html.Attributes exposing (class, value, style)
-import Html.Events exposing (onClick, onSubmit, onInput)
+import Html.Attributes exposing (class, value, style, id)
+import Html.Events exposing (onClick, onSubmit, onInput, onDoubleClick, onBlur)
 import Time exposing (Time, second)
+import Dom
+import Task
 
 
 type Mode
@@ -17,6 +19,7 @@ type alias Model =
     , mode : Mode
     , inputBox : String
     , todos : List String
+    , editIndex : Int
     }
 
 
@@ -32,11 +35,15 @@ type Msg
     | InputBox String
     | AddTodo String
     | RemoveTodo Int
+    | EditTodo Int String
+    | NoOp
 
 
 init : Flag -> ( Model, Cmd Msg )
 init flag =
-    ( Model (modeToSeconds Working) False Working "" flag.todos, Cmd.none )
+    ( Model (modeToSeconds Working) False Working "" flag.todos -1
+    , Cmd.none
+    )
 
 
 view : Model -> Html Msg
@@ -61,23 +68,37 @@ viewTodos model =
             ]
         , div
             [ class "list-group text-center" ]
-            (List.indexedMap viewTodo model.todos)
+            (List.indexedMap (viewTodo model.editIndex) model.todos)
         ]
 
 
-viewTodo : Int -> String -> Html Msg
-viewTodo index todo =
-    div [ class "list-group-item" ]
-        [ text todo
-        , div
-            [ class "pull-right"
-            , style [ ( "cursor", "pointer" ) ]
+viewTodo : Int -> Int -> String -> Html Msg
+viewTodo editIndex index todo =
+    div [ class "list-group-item", onDoubleClick (EditTodo index todo) ]
+        (if editIndex == index then
+            [ form [ onSubmit (EditTodo -1 "") ]
+                [ input
+                    [ onInput (EditTodo index)
+                    , onBlur (EditTodo -1 "")
+                    , class "form-control"
+                    , id "edit-input"
+                    , value todo
+                    ]
+                    []
+                ]
             ]
-            [ span
-                [ onClick (RemoveTodo index) ]
-                [ viewGlyphicon "remove" ]
+         else
+            [ text todo
+            , div
+                [ class "pull-right"
+                , style [ ( "cursor", "pointer" ) ]
+                ]
+                [ span
+                    [ onClick (RemoveTodo index) ]
+                    [ viewGlyphicon "remove" ]
+                ]
             ]
-        ]
+        )
 
 
 pomodoroTimer : Model -> Html Msg
@@ -224,6 +245,28 @@ update msg model =
                     frontTodos ++ backTodos
             in
                 ( { model | todos = todos }, saveTodos todos )
+
+        EditTodo index editText ->
+            let
+                todos =
+                    List.indexedMap
+                        (\i todo ->
+                            if i == index then
+                                editText
+                            else
+                                todo
+                        )
+                        model.todos
+            in
+                ( { model | editIndex = index, todos = todos }
+                , Cmd.batch
+                    [ saveTodos todos
+                    , Task.attempt (\_ -> NoOp) (Dom.focus "edit-input")
+                    ]
+                )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 port saveTodos : List String -> Cmd msg
