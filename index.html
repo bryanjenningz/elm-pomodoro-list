@@ -15,8 +15,12 @@
     <script src="elm.js"></script>
     <script>
       function loadTodos() {
-        var todos = JSON.parse(localStorage.todos || "[]");
-        return todos.every(todo => typeof todo === "string") ? todos : [];
+        try {
+          var todos = JSON.parse(localStorage.todos || "[]");
+          return todos.every(todo => typeof todo === "string") ? todos : [];
+        } catch (err) {
+          return [];
+        }
       }
 
       var app = Elm.Main.embed(
