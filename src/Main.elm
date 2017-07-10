@@ -74,7 +74,7 @@ viewTodos model =
 
 viewTodo : Int -> Int -> String -> Html Msg
 viewTodo editIndex index todo =
-    div [ class "list-group-item", onDoubleClick (EditTodo index todo) ]
+    div [ class "list-group-item" ]
         (if editIndex == index then
             [ form [ onSubmit (EditTodo -1 "") ]
                 [ input
@@ -88,7 +88,8 @@ viewTodo editIndex index todo =
                 ]
             ]
          else
-            [ text todo
+            [ span [ onDoubleClick (EditTodo index todo) ]
+                [ text todo ]
             , div
                 [ class "pull-right"
                 , style [ ( "cursor", "pointer" ) ]
