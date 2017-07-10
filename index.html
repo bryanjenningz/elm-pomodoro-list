@@ -14,9 +14,14 @@
     </audio>
     <script src="elm.js"></script>
     <script>
+      function loadTodos() {
+        var todos = JSON.parse(localStorage.todos || "[]");
+        return todos.every(todo => typeof todo === "string") ? todos : [];
+      }
+
       var app = Elm.Main.embed(
         document.querySelector("#main"),
-        { todos: JSON.parse(localStorage.todos || "[]") }
+        { todos: loadTodos() }
       );
       
       app.ports.saveTodos.subscribe(function(todos) {
